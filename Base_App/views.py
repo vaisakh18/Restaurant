@@ -11,33 +11,20 @@ from django.contrib.auth import logout
 from django.urls import reverse_lazy
 
 def add_to_cart(request):
-    if request.method == 'POST' and request.user.is_authenticated:
-        item_id = request.POST.get('item_id')
-        item = get_object_or_404(Items, id=item_id)
-        
-        print(f'Item ID: {item_id}')  
-        print(f'Item: {item.Item_name}, Price: {item.Price}')  
+    if request.method == 'POST':
+        if request.user.is_authenticated:
+            item_id = request.POST.get('item_id')
+            item = get_object_or_404(Items, id=item_id)
 
-        
-        cart = request.session.get('cart', {})
-        print(f'Cart before update: {cart}')  
+            cart_item, created = Cart.objects.get_or_create(user=request.user, item=item)
+            if not created:
+                cart_item.quantity += 1
+                cart_item.save()
 
-        if item_id in cart:
-            cart[item_id]['quantity'] += 1
+            return JsonResponse({'message': 'Item added to cart'})
         else:
-            cart[item_id] = {
-                'name': item.Item_name,
-                'price': item.Price,
-                'quantity': 1
-            }
-
-        request.session['cart'] = cart
-        print(f'Cart after update: {cart}')  # Debug print
-
-        return JsonResponse({'message': 'Item added to cart', 'cart': cart})
-    else:
-        print('Invalid request')  
-        return JsonResponse({'error': 'Invalid request'}, status=400)
+            return JsonResponse({'error': 'You must be logged in to add items to cart.'}, status=401)
+    return JsonResponse({'error': 'Invalid request'}, status=400)
 
 
 def get_cart_items(request):
